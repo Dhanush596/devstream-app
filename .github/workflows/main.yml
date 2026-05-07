@@ -3,10 +3,13 @@ name: DevStream CI/CD Pipeline
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -17,17 +20,32 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & Scan Backend (DevSecOps)
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/devstream-server ./server
-          # Security Scanning with Trivy
-          docker run --rm aquasec/trivy image ${{ secrets.DOCKER_USERNAME }}/devstream-server
+      # --- BACKEND SECTION ---
+      - name: Build Backend Image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/devstream-server ./server
 
-      - name: Build Frontend
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/devstream-client ./client
+      - name: DevSecOps: Security Scan Backend (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/devstream-server'
+          format: 'table'
+          exit-code: '0' # Keeps pipeline running even if vulnerabilities are found
+          severity: 'CRITICAL,HIGH'
 
-      - name: Push Images
+      # --- FRONTEND SECTION ---
+      - name: Build Frontend Image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/devstream-client ./client
+
+      - name: DevSecOps: Security Scan Frontend (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/devstream-client'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+      # --- PUSH SECTION ---
+      - name: Push Images to Docker Hub
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/devstream-server
           docker push ${{ secrets.DOCKER_USERNAME }}/devstream-client
