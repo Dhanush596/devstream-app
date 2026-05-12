@@ -9,6 +9,9 @@ const cpuData = [
   { time: '16:00', usage: 38 }, { time: '16:05', usage: 41 },
 ];
 
+// Production API URL - Talking to the Backend on Port 5000
+const API_URL = "http://16.170.162.69:5000";
+
 function App() {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -19,7 +22,7 @@ function App() {
     e.preventDefault();
     const endpoint = isLogin ? 'login' : 'register';
     try {
-      const response = await axios.post(`http://localhost:5000/${endpoint}`, formData);
+      const response = await axios.post(`${API_URL}/${endpoint}`, formData);
       alert(response.data.message);
       if (isLogin) {
         setUserName(response.data.name);
@@ -28,7 +31,8 @@ function App() {
         setIsLogin(true);
       }
     } catch (error: any) {
-      alert(error.response?.data?.message || "Connection to API failed!");
+      console.error("Connection Error:", error);
+      alert(error.response?.data?.message || "Connection to API failed! Check Port 5000 in AWS Security Groups.");
     }
   };
 
